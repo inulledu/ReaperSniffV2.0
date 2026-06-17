@@ -43,10 +43,14 @@ class PingThread(QThread):
         try:
             if is_win:
                 cmd = ["ping", "-n", "1", "-w", "1500", self.target]
+                # Prevent a console window from flashing on every ping (Windows).
+                flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
             else:
                 cmd = ["ping", "-c", "1", "-W", "2", self.target]
+                flags = 0
             out = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=4,
+                creationflags=flags,
             )
             if out.returncode != 0:
                 return None
