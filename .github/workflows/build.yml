@@ -1,0 +1,52 @@
+name: Build ReaperSniff EXE
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]          # pushing a tag like v1.0.0 also publishes a Release
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch: {}    # lets you run it manually from the Actions tab
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build EXE with PyInstaller
+        run: pyinstaller --noconfirm reapersniff.spec
+
+      - name: Package build into a ZIP
+        shell: pwsh
+        run: Compress-Archive -Path dist/ReaperSniff/* -DestinationPath ReaperSniff-windows.zip -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReaperSniff-windows
+          path: ReaperSniff-windows.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ReaperSniff-windows.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
